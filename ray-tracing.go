@@ -49,30 +49,40 @@ func main() {
 	}
 	defer window.Destroy()
 
-	// retrieves the surface
-	surface, err := window.GetSurface()
+	// retrieves the screen
+	screen, err := window.GetSurface()
 	if err != nil {
 		panic(err)
 	}
 
-	surface.FillRect(&sdl.Rect{0, 0, WIDTH, HEIGHT}, 0x00000000)
+	// clear the screen (otherwise there is garbage...)
+	err = screen.FillRect(&sdl.Rect{0, 0, WIDTH, HEIGHT}, 0x00000000)
+	if err != nil {
+		panic(err)
+	}
 
+	// actual work to render the image
 	rb := render(WIDTH, HEIGHT)
 
+	// create an image from the pixels generated
 	image, err := sdl.CreateRGBSurfaceFrom(unsafe.Pointer(&rb.pixels[0]), int32(rb.Width), int32(rb.Height), 32, rb.Width*int(unsafe.Sizeof(rb.pixels[0])), 0, 0, 0, 0)
 	if err != nil {
 		panic(err)
 	}
-	err = image.Blit(nil, surface, nil)
+	// copy it into the screen
+	err = image.Blit(nil, screen, nil)
 	if err != nil {
 		panic(err)
 	}
 	image.Free()
 
+	// update the surface to show it
+	err = window.UpdateSurface()
+	if err != nil {
+		panic(err)
+	}
 
-	//surface.FillRect(&rect, 0xffff0000)
-	window.UpdateSurface()
-
+	// poll for quit event
 	for running := true; running; {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch event.(type) {
@@ -83,22 +93,4 @@ func main() {
 
 		sdl.Delay(16)
 	}
-
-	//// turns the sdl event stream into a channel
-	//sdlEvents := make(chan sdl.Event)
-	//go func() {
-	//	for {
-	//		sdlEvents <- sdl.WaitEvent()
-	//	}
-	//}()
-	//
-	//sdl.Delay(2500)
-	//
-	//// read and process events from the
-	//for event := range sdlEvents {
-	//	switch event.(type) {
-	//	case *sdl.QuitEvent:
-	//		break
-	//	}
-	//}
 }
