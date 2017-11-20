@@ -3,7 +3,6 @@ package main
 
 import (
 	"github.com/veandco/go-sdl2/sdl"
-	"math"
 	"unsafe"
 )
 
@@ -17,15 +16,8 @@ func render(Width, Height int) RenderBlock {
 	k := 0
 	for j := Height - 1; j >= 0; j-- {
 		for i := 0; i < Width; i++ {
-			r := float64(i) / float64(Width)
-			g := float64(j) / float64(Height)
-			b := float64(0.2)
-
-			R := uint32(math.Min(255.0, r*255.99))
-			G := uint32(math.Min(255.0, g*255.99))
-			B := uint32(math.Min(255.0, b*255.99))
-
-			pixels[k] = ((R & 0xFF) << 16) | ((G & 0xFF) << 8) | (B & 0xFF)
+			c := Color{R: float64(i) / float64(Width), G: float64(j) / float64(Height), B: 0.2}
+			pixels[k] = c.PixelValue()
 			k++
 		}
 	}
@@ -56,7 +48,7 @@ func main() {
 	}
 
 	// clear the screen (otherwise there is garbage...)
-	err = screen.FillRect(&sdl.Rect{0, 0, WIDTH, HEIGHT}, 0x00000000)
+	err = screen.FillRect(&sdl.Rect{W: WIDTH, H: HEIGHT}, 0x00000000)
 	if err != nil {
 		panic(err)
 	}
