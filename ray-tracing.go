@@ -11,6 +11,15 @@ type RenderBlock struct {
 	pixels              []uint32
 }
 
+func hitSphere(center Point3, radius float64, ray Ray) bool {
+	oc := ray.Origin.Sub(center)
+	a := Dot(ray.Direction, ray.Direction)
+	b := 2.0 * Dot(oc, ray.Direction)
+	c := Dot(oc, oc) - radius * radius
+	discriminant := b * b - 4.0 * a * c
+	return discriminant > 0
+}
+
 func render(Width, Height int) RenderBlock {
 	pixels := make([]uint32, Width*Height)
 
@@ -40,6 +49,9 @@ func render(Width, Height int) RenderBlock {
 }
 
 func color(r Ray) Color {
+	if hitSphere(Point3{Z: -1.0}, 0.5, r) {
+		return Color{R: 1.0}
+	}
 	unitDirection := r.Direction.Unit()
 
 	t := 0.5 * (unitDirection.Y + 1.0)
