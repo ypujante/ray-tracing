@@ -13,11 +13,25 @@ type RenderBlock struct {
 
 func render(Width, Height int) RenderBlock {
 	pixels := make([]uint32, Width*Height)
+
+	origin := Point3{}
+	lowerLeftCorner := Point3{-2.0, -1.0, -1.0}
+	horizontal := Vec3{X: 4.0}
+	vertical := Vec3{Y: 2.0}
+
 	k := 0
 	for j := Height - 1; j >= 0; j-- {
 		for i := 0; i < Width; i++ {
-			c := Color{R: float64(i) / float64(Width), G: float64(j) / float64(Height), B: 0.2}
+
+			u := float64(i) / float64(Width)
+			v := float64(j) / float64(Height)
+
+			d := lowerLeftCorner.Translate(horizontal.Scale(u)).Translate(vertical.Scale(v)).Vec3()
+
+			c := color(Ray{origin, d})
+
 			pixels[k] = c.PixelValue()
+
 			k++
 		}
 	}
@@ -25,8 +39,16 @@ func render(Width, Height int) RenderBlock {
 	return RenderBlock{0, 0, Width, Height, pixels}
 }
 
+func color(r Ray) Color {
+	unitDirection := r.Direction.Unit()
+
+	t := 0.5 * (unitDirection.Y + 1.0)
+
+	return White.Scale(1.0-t).Add(Color{0.5, 0.7, 1.0}.Scale(t))
+}
+
 func main() {
-	const WIDTH, HEIGHT = 800, 600
+	const WIDTH, HEIGHT = 200, 100
 
 	// initializes SDL
 	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
