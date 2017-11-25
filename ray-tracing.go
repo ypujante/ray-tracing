@@ -5,6 +5,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 	"unsafe"
 	"math"
+	"math/rand"
 )
 
 type RenderBlock struct {
@@ -12,32 +13,29 @@ type RenderBlock struct {
 	pixels              []uint32
 }
 
-func render(Width, Height int, world Hitable) RenderBlock {
-	pixels := make([]uint32, Width*Height)
-
-	origin := Point3{}
-	lowerLeftCorner := Point3{-2.0, -1.0, -1.0}
-	horizontal := Vec3{X: 4.0}
-	vertical := Vec3{Y: 2.0}
+func render(width, height, raysPerPixel int, camera Camera, world Hitable) RenderBlock {
+	pixels := make([]uint32, width*height)
 
 	k := 0
-	for j := Height - 1; j >= 0; j-- {
-		for i := 0; i < Width; i++ {
+	for j := height - 1; j >= 0; j-- {
+		for i := 0; i < width; i++ {
 
-			u := float64(i) / float64(Width)
-			v := float64(j) / float64(Height)
+			c := Color{}
 
-			d := lowerLeftCorner.Translate(horizontal.Scale(u)).Translate(vertical.Scale(v)).Vec3()
+			for s := 0; s < raysPerPixel; s++ {
+				u := (float64(i) + rand.Float64()) / float64(width)
+				v := (float64(j) + rand.Float64()) / float64(height)
+				r := camera.ray(u, v)
+				c = c.Add(color(r, world))
+			}
 
-			c := color(Ray{origin, d}, world)
-
-			pixels[k] = c.PixelValue()
+			pixels[k] = c.Scale(1.0 / float64(raysPerPixel)).PixelValue()
 
 			k++
 		}
 	}
 
-	return RenderBlock{0, 0, Width, Height, pixels}
+	return RenderBlock{0, 0, width, height, pixels}
 }
 
 func color(r Ray, world Hitable) Color {
@@ -60,7 +58,9 @@ func buildWorld() HitableList {
 }
 
 func main() {
-	const WIDTH, HEIGHT = 400, 200
+	const WIDTH, HEIGHT, RAYS_PER_PIXEL = 400, 200, 100
+
+	rand.Seed(1971)
 
 	// initializes SDL
 	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
@@ -88,8 +88,14 @@ func main() {
 	}
 
 	// actual work to render the image
+	camera := Camera{
+		origin:          Point3{},
+		lowerLeftCorner: Point3{-2.0, -1.0, -1.0},
+		horizontal:      Vec3{X: 4.0},
+		vertical:        Vec3{Y: 2.0},
+	}
 	world := buildWorld()
-	rb := render(WIDTH, HEIGHT, world)
+	rb := render(WIDTH, HEIGHT, RAYS_PER_PIXEL, camera, world)
 
 	// create an image from the pixels generated
 	image, err := sdl.CreateRGBSurfaceFrom(unsafe.Pointer(&rb.pixels[0]), int32(rb.Width), int32(rb.Height), 32, rb.Width*int(unsafe.Sizeof(rb.pixels[0])), 0, 0, 0, 0)
