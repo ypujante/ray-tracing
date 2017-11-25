@@ -35,7 +35,7 @@ func render(width, height, raysPerPixel int, camera Camera, world Hitable) Rende
 				u := (float64(i) + rand.Float64()) / float64(width)
 				v := (float64(j) + rand.Float64()) / float64(height)
 				r := camera.ray(u, v)
-				c = c.Add(color(r, world))
+				c = c.Add(color(r, world, 0))
 			}
 
 			c = c.Scale(1.0 / float64(raysPerPixel))
@@ -50,11 +50,18 @@ func render(width, height, raysPerPixel int, camera Camera, world Hitable) Rende
 	return RenderBlock{0, 0, width, height, pixels}
 }
 
-func color(r Ray, world Hitable) Color {
+func color(r Ray, world Hitable, depth int) Color {
 
-	if hr, hit := world.hit(r, 0.0, math.MaxFloat64); hit {
-		target := hr.p.Translate(hr.normal).Translate(randomInUnitSphere())
-		return color(Ray{hr.p, target.Sub(hr.p)}, world).Scale(0.5)
+	if hit, hr := world.hit(r, 0.001, math.MaxFloat64); hit {
+		if depth >= 50 {
+			return Black
+		}
+
+		if wasScattered, attenuation, scattered := hr.material.scatter(r, hr); wasScattered {
+			return attenuation.Mult(color(*scattered, world, depth + 1))
+		} else {
+			return Black
+		}
 	}
 
 	unitDirection := r.Direction.Unit()
@@ -65,8 +72,8 @@ func color(r Ray, world Hitable) Color {
 
 func buildWorld() HitableList {
 	return HitableList{
-		Sphere{center: Point3{Z: -1.0}, radius: 0.5},
-		Sphere{center: Point3{Y: -100.5, Z: -1.0}, radius: 100},
+		Sphere{center: Point3{Z: -1.0}, radius: 0.5, material: LambertianMaterial{Color{R: 1.0}}},
+		Sphere{center: Point3{Y: -100.5, Z: -1.0}, radius: 100, material: LambertianMaterial{Color{G: 1.0}}},
 	}
 }
 

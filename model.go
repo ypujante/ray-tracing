@@ -77,11 +77,17 @@ type Color struct {
 
 var (
 	White = Color{1.0, 1.0, 1.0}
+	Black = Color{}
 )
 
 // Scale scales the Color by the value (return a new Color)
 func (c Color) Scale(t float64) Color {
 	return Color{R: c.R * t, G: c.G * t, B: c.B * t}
+}
+
+// Mult Multiplies 2 colors together (component by component multiplication)
+func (c Color) Mult(c2 Color) Color {
+	return Color{R: c.R * c2.R, G: c.G * c2.G, B: c.B * c2.B}
 }
 
 // Add adds the 2 colors (return a new color)
@@ -102,33 +108,34 @@ func (c Color) PixelValue() uint32 {
  * Hitable
  ************************/
 type HitRecord struct {
-	t      float64 // which t generated the hit
-	p      Point3  // which point when hit
-	normal Vec3    // normal at that point
+	t        float64  // which t generated the hit
+	p        Point3   // which point when hit
+	normal   Vec3     // normal at that point
+	material Material // the material associated to this record
 }
 
 // Hitable defines the interface of objects that can be hit by a ray
 type Hitable interface {
-	hit(r Ray, tMin float64, tMax float64) (*HitRecord, bool)
+	hit(r Ray, tMin float64, tMax float64) (bool, *HitRecord)
 }
 
 // HitableList defines a simple list of hitable
 type HitableList []Hitable
 
 // hit defines the method for a list of hitables: will return the one closest
-func (hl HitableList) hit(r Ray, tMin float64, tMax float64) (*HitRecord, bool) {
+func (hl HitableList) hit(r Ray, tMin float64, tMax float64) (bool, *HitRecord) {
 	var res *HitRecord
 	hitAnything := false
 
 	closestSoFar := tMax
 
 	for _, h := range hl {
-		if hr, hit := h.hit(r, tMin, closestSoFar); hit {
+		if hit, hr := h.hit(r, tMin, closestSoFar); hit {
 			hitAnything = true
 			res = hr
 			closestSoFar = hr.t
 		}
 	}
 
-	return res, hitAnything
+	return hitAnything, res
 }
