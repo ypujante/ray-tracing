@@ -38,7 +38,10 @@ func render(width, height, raysPerPixel int, camera Camera, world Hitable) Rende
 				c = c.Add(color(r, world))
 			}
 
-			pixels[k] = c.Scale(1.0 / float64(raysPerPixel)).PixelValue()
+			c = c.Scale(1.0 / float64(raysPerPixel))
+			c = Color{R: math.Sqrt(c.R), G: math.Sqrt(c.G), B: math.Sqrt(c.B)}
+
+			pixels[k] = c.PixelValue()
 
 			k++
 		}
