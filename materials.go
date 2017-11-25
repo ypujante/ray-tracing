@@ -9,16 +9,36 @@ type Material interface {
 }
 
 /***********************
- * LambertianMaterial material (diffuse only)
+ * Lambertian material (diffuse only)
  ************************/
-type LambertianMaterial struct {
+type Lambertian struct {
 	albedo Color
 }
 
-func (l LambertianMaterial) scatter(r Ray, rec *HitRecord) (bool, *Color, *Ray) {
+func (mat Lambertian) scatter(r Ray, rec *HitRecord) (bool, *Color, *Ray) {
 	target := rec.p.Translate(rec.normal).Translate(randomInUnitSphere())
 	scattered := &Ray{rec.p, target.Sub(rec.p)}
-	attenuation := &l.albedo
+	attenuation := &mat.albedo
 	return true, attenuation, scattered
 
 }
+
+/***********************
+ * MetalMaterial material
+ ************************/
+type Metal struct {
+	albedo Color
+}
+
+func (mat Metal) scatter(r Ray, rec *HitRecord) (bool, *Color, *Ray) {
+	reflected := r.Direction.Unit().Reflect(rec.normal)
+	scattered := &Ray{rec.p, reflected}
+	attenuation := &mat.albedo
+
+	if Dot(scattered.Direction, rec.normal) > 0 {
+		return true, attenuation, scattered
+	}
+
+	return false, nil, nil
+}
+

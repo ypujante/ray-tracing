@@ -15,6 +15,16 @@ func (v Vec3) Scale(t float64) Vec3 {
 	return Vec3{X: v.X * t, Y: v.Y * t, Z: v.Z * t}
 }
 
+// Mult multiplies the vector by the other one (return a new vector)
+func (v Vec3) Mult(v2 Vec3) Vec3 {
+	return Vec3{X: v.X * v2.X, Y: v.Y * v2.Y, Z: v.Z * v2.Z}
+}
+
+// Sub substracts the 2 vectors (return a new vector)
+func (v Vec3) Sub(v2 Vec3) Vec3 {
+	return Vec3{X: v.X - v2.X, Y: v.Y - v2.Y, Z: v.Z - v2.Z}
+}
+
 // Length returns the size of the vector
 func (v Vec3) Length() float64 {
 	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
@@ -28,6 +38,11 @@ func (v Vec3) Unit() Vec3 {
 // Dot returns the dot product (a scalar) of 2 vectors
 func Dot(v1 Vec3, v2 Vec3) float64 {
 	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z
+}
+
+// Reflect simply reflects the vector based on the normal n
+func (v Vec3) Reflect(n Vec3) Vec3 {
+	return v.Sub(n.Scale(2.0 * Dot(v, n)))
 }
 
 /***********************
