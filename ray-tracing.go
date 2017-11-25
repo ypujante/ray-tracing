@@ -12,21 +12,7 @@ type RenderBlock struct {
 	pixels              []uint32
 }
 
-func hitSphere(center Point3, radius float64, ray Ray) float64 {
-	oc := ray.Origin.Sub(center)
-	a := Dot(ray.Direction, ray.Direction)
-	b := 2.0 * Dot(oc, ray.Direction)
-	c := Dot(oc, oc) - radius * radius
-	discriminant := b * b - 4.0 * a * c
-
-	if discriminant < 0 {
-		return -1.0
-	} else {
-		return (-b - math.Sqrt(discriminant)) / (2.0 * a)
-	}
-}
-
-func render(Width, Height int) RenderBlock {
+func render(Width, Height int, world Hitable) RenderBlock {
 	pixels := make([]uint32, Width*Height)
 
 	origin := Point3{}
@@ -43,7 +29,7 @@ func render(Width, Height int) RenderBlock {
 
 			d := lowerLeftCorner.Translate(horizontal.Scale(u)).Translate(vertical.Scale(v)).Vec3()
 
-			c := color(Ray{origin, d})
+			c := color(Ray{origin, d}, world)
 
 			pixels[k] = c.PixelValue()
 
@@ -54,16 +40,23 @@ func render(Width, Height int) RenderBlock {
 	return RenderBlock{0, 0, Width, Height, pixels}
 }
 
-func color(r Ray) Color {
-	t := hitSphere(Point3{Z: -1.0}, 0.5, r)
-	if t > 0.0 {
-		normal := r.PointAt(t).Sub(Point3{Z: -1.0}).Unit()
-		return Color{R: normal.X + 1.0, G: normal.Y + 1.0, B: normal.Z + 1.0}.Scale(0.5)
-	}
-	unitDirection := r.Direction.Unit()
-	t = 0.5 * (unitDirection.Y + 1.0)
+func color(r Ray, world Hitable) Color {
 
-	return White.Scale(1.0-t).Add(Color{0.5, 0.7, 1.0}.Scale(t))
+	if hr, hit := world.hit(r, 0.0, math.MaxFloat64); hit {
+		return Color{R: hr.normal.X + 1.0, G: hr.normal.Y + 1.0, B: hr.normal.Z + 1.0}.Scale(0.5)
+	}
+
+	unitDirection := r.Direction.Unit()
+	t := 0.5 * (unitDirection.Y + 1.0)
+
+	return White.Scale(1.0 - t).Add(Color{0.5, 0.7, 1.0}.Scale(t))
+}
+
+func buildWorld() HitableList {
+	return HitableList{
+		Sphere{center: Point3{Z: -1.0}, radius: 0.5},
+		Sphere{center: Point3{Y: -100.5, Z: -1.0}, radius: 100},
+	}
 }
 
 func main() {
@@ -95,7 +88,8 @@ func main() {
 	}
 
 	// actual work to render the image
-	rb := render(WIDTH, HEIGHT)
+	world := buildWorld()
+	rb := render(WIDTH, HEIGHT, world)
 
 	// create an image from the pixels generated
 	image, err := sdl.CreateRGBSurfaceFrom(unsafe.Pointer(&rb.pixels[0]), int32(rb.Width), int32(rb.Height), 32, rb.Width*int(unsafe.Sizeof(rb.pixels[0])), 0, 0, 0, 0)

@@ -2,6 +2,9 @@ package main
 
 import "math"
 
+/***********************
+ * Vec3
+ ************************/
 // Vec3 defines a vector in 3D space
 type Vec3 struct {
 	X, Y, Z float64
@@ -24,9 +27,12 @@ func (v Vec3) Unit() Vec3 {
 
 // Dot returns the dot product (a scalar) of 2 vectors
 func Dot(v1 Vec3, v2 Vec3) float64 {
-	return v1.X * v2.X + v1.Y * v2.Y + v1.Z * v2.Z
+	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z
 }
 
+/***********************
+ * Point3
+ ************************/
 // Point3 defines a point in 3D space
 type Point3 struct {
 	X, Y, Z float64
@@ -44,9 +50,12 @@ func (p Point3) Sub(p2 Point3) Vec3 {
 
 // Vec3 converts a point to a vector (centered at origin)
 func (p Point3) Vec3() Vec3 {
-	return Vec3{p.X, p.Y, p.Z }
+	return Vec3{p.X, p.Y, p.Z}
 }
 
+/***********************
+ * Ray
+ ************************/
 // Ray represents a ray defined by its origin and direction
 type Ray struct {
 	Origin    Point3
@@ -58,6 +67,9 @@ func (r Ray) PointAt(t float64) Point3 {
 	return r.Origin.Translate(r.Direction.Scale(t))
 }
 
+/***********************
+ * Color
+ ************************/
 // Color defines the basic Red/Green/Blue as raw float64 values
 type Color struct {
 	R, G, B float64
@@ -84,4 +96,39 @@ func (c Color) PixelValue() uint32 {
 	b := uint32(math.Min(255.0, c.B*255.99))
 
 	return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF)
+}
+
+/***********************
+ * Hitable
+ ************************/
+type HitRecord struct {
+	t      float64 // which t generated the hit
+	p      Point3  // which point when hit
+	normal Vec3    // normal at that point
+}
+
+// Hitable defines the interface of objects that can be hit by a ray
+type Hitable interface {
+	hit(r Ray, tMin float64, tMax float64) (*HitRecord, bool)
+}
+
+// HitableList defines a simple list of hitable
+type HitableList []Hitable
+
+// hit defines the method for a list of hitables: will return the one closest
+func (hl HitableList) hit(r Ray, tMin float64, tMax float64) (*HitRecord, bool) {
+	var res *HitRecord
+	hitAnything := false
+
+	closestSoFar := tMax
+
+	for _, h := range hl {
+		if hr, hit := h.hit(r, tMin, closestSoFar); hit {
+			hitAnything = true
+			res = hr
+			closestSoFar = hr.t
+		}
+	}
+
+	return res, hitAnything
 }
