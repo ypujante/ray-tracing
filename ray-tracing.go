@@ -13,6 +13,15 @@ type RenderBlock struct {
 	pixels              []uint32
 }
 
+func randomInUnitSphere() Vec3 {
+	for {
+		p := Point3{2.0 * rand.Float64(), 2.0 * rand.Float64(), 2.0 * rand.Float64()}.Sub(Point3{1, 1, 1})
+		if Dot(p, p) < 1.0 {
+			return p
+		}
+	}
+}
+
 func render(width, height, raysPerPixel int, camera Camera, world Hitable) RenderBlock {
 	pixels := make([]uint32, width*height)
 
@@ -41,7 +50,8 @@ func render(width, height, raysPerPixel int, camera Camera, world Hitable) Rende
 func color(r Ray, world Hitable) Color {
 
 	if hr, hit := world.hit(r, 0.0, math.MaxFloat64); hit {
-		return Color{R: hr.normal.X + 1.0, G: hr.normal.Y + 1.0, B: hr.normal.Z + 1.0}.Scale(0.5)
+		target := hr.p.Translate(hr.normal).Translate(randomInUnitSphere())
+		return color(Ray{hr.p, target.Sub(hr.p)}, world).Scale(0.5)
 	}
 
 	unitDirection := r.Direction.Unit()
