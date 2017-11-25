@@ -4,6 +4,7 @@ package main
 import (
 	"github.com/veandco/go-sdl2/sdl"
 	"unsafe"
+	"math"
 )
 
 type RenderBlock struct {
@@ -11,13 +12,18 @@ type RenderBlock struct {
 	pixels              []uint32
 }
 
-func hitSphere(center Point3, radius float64, ray Ray) bool {
+func hitSphere(center Point3, radius float64, ray Ray) float64 {
 	oc := ray.Origin.Sub(center)
 	a := Dot(ray.Direction, ray.Direction)
 	b := 2.0 * Dot(oc, ray.Direction)
 	c := Dot(oc, oc) - radius * radius
 	discriminant := b * b - 4.0 * a * c
-	return discriminant > 0
+
+	if discriminant < 0 {
+		return -1.0
+	} else {
+		return (-b - math.Sqrt(discriminant)) / (2.0 * a)
+	}
 }
 
 func render(Width, Height int) RenderBlock {
@@ -49,18 +55,19 @@ func render(Width, Height int) RenderBlock {
 }
 
 func color(r Ray) Color {
-	if hitSphere(Point3{Z: -1.0}, 0.5, r) {
-		return Color{R: 1.0}
+	t := hitSphere(Point3{Z: -1.0}, 0.5, r)
+	if t > 0.0 {
+		normal := r.PointAt(t).Sub(Point3{Z: -1.0}).Unit()
+		return Color{R: normal.X + 1.0, G: normal.Y + 1.0, B: normal.Z + 1.0}.Scale(0.5)
 	}
 	unitDirection := r.Direction.Unit()
-
-	t := 0.5 * (unitDirection.Y + 1.0)
+	t = 0.5 * (unitDirection.Y + 1.0)
 
 	return White.Scale(1.0-t).Add(Color{0.5, 0.7, 1.0}.Scale(t))
 }
 
 func main() {
-	const WIDTH, HEIGHT = 200, 100
+	const WIDTH, HEIGHT = 400, 200
 
 	// initializes SDL
 	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
