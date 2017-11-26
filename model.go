@@ -40,6 +40,11 @@ func (v Vec3) Unit() Vec3 {
 	return v.Scale(1.0 / v.Length())
 }
 
+// Negate returns a new vector with X/Y/Z negated
+func (v Vec3) Negate() Vec3 {
+	return Vec3{-v.X, -v.Y, -v.Z}
+}
+
 // Dot returns the dot product (a scalar) of 2 vectors
 func Dot(v1 Vec3, v2 Vec3) float64 {
 	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z

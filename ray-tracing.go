@@ -86,6 +86,17 @@ func buildWorldMetalSpheres() HitableList {
 	}
 }
 
+func buildWorldDielectrics() HitableList {
+	return HitableList{
+		Sphere{center: Point3{Z: -1.0}, radius: 0.5, material: Lambertian{Color{R: 0.1, G: 0.2, B: 0.5}}},
+		Sphere{center: Point3{Y: -100.5, Z: -1.0}, radius: 100, material: Lambertian{Color{R: 0.8, G: 0.8}}},
+		Sphere{center: Point3{X: 1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Metal{Color{R: 0.8, G: 0.6, B: 0.2}, 1.0}},
+		Sphere{center: Point3{X: -1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Dielectric{1.5}},
+		Sphere{center: Point3{X: -1.0, Y: 0, Z: -1.0}, radius: -0.45, material: Dielectric{1.5}},
+	}
+}
+
+
 func main() {
 	const WIDTH, HEIGHT, RAYS_PER_PIXEL = 400, 200, 100
 
@@ -123,7 +134,7 @@ func main() {
 		horizontal:      Vec3{X: 4.0},
 		vertical:        Vec3{Y: 2.0},
 	}
-	world := buildWorldMetalSpheres()
+	world := buildWorldDielectrics()
 	rb := render(WIDTH, HEIGHT, RAYS_PER_PIXEL, camera, world)
 
 	// create an image from the pixels generated
