@@ -50,6 +50,11 @@ func Dot(v1 Vec3, v2 Vec3) float64 {
 	return v1.X*v2.X + v1.Y*v2.Y + v1.Z*v2.Z
 }
 
+// Cross returns the cross product of 2 vectors (another vector)
+func Cross(v1 Vec3, v2 Vec3) Vec3 {
+	return Vec3{v1.Y*v2.Z - v1.Z*v2.Y, -(v1.X*v2.Z - v1.Z*v2.X), v1.X*v2.Y - v1.Y*v2.X}
+}
+
 // Reflect simply reflects the vector based on the normal n
 func (v Vec3) Reflect(n Vec3) Vec3 {
 	return v.Sub(n.Scale(2.0 * Dot(v, n)))

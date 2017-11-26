@@ -98,7 +98,7 @@ func buildWorldDielectrics() HitableList {
 
 
 func main() {
-	const WIDTH, HEIGHT, RAYS_PER_PIXEL = 400, 200, 100
+	const WIDTH, HEIGHT, RAYS_PER_PIXEL = 400, 200, 5
 
 	rand.Seed(1971)
 
@@ -128,12 +128,8 @@ func main() {
 	}
 
 	// actual work to render the image
-	camera := Camera{
-		origin:          Point3{},
-		lowerLeftCorner: Point3{-2.0, -1.0, -1.0},
-		horizontal:      Vec3{X: 4.0},
-		vertical:        Vec3{Y: 2.0},
-	}
+	camera := NewCamera(Point3{}, Point3{Z: -1.0}, Vec3{Y:1.0}, 90, WIDTH / HEIGHT, 1)
+
 	world := buildWorldDielectrics()
 	rb := render(WIDTH, HEIGHT, RAYS_PER_PIXEL, camera, world)
 
