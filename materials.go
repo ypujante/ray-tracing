@@ -24,14 +24,18 @@ func (mat Lambertian) scatter(r *Ray, rec *HitRecord) (bool, *Color, *Ray) {
 }
 
 /***********************
- * MetalMaterial material
+ * Metal material
  ************************/
 type Metal struct {
 	albedo Color
+	fuzz float64
 }
 
 func (mat Metal) scatter(r *Ray, rec *HitRecord) (bool, *Color, *Ray) {
 	reflected := r.Direction.Unit().Reflect(rec.normal)
+	if mat.fuzz < 1 {
+		reflected = reflected.Add(randomInUnitSphere().Scale(mat.fuzz))
+	}
 	scattered := &Ray{rec.p, reflected}
 	attenuation := &mat.albedo
 

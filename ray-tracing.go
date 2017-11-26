@@ -58,7 +58,7 @@ func color(r *Ray, world Hitable, depth int) Color {
 		}
 
 		if wasScattered, attenuation, scattered := hr.material.scatter(r, hr); wasScattered {
-			return attenuation.Mult(color(scattered, world, depth + 1))
+			return attenuation.Mult(color(scattered, world, depth+1))
 		} else {
 			return Black
 		}
@@ -81,8 +81,8 @@ func buildWorldMetalSpheres() HitableList {
 	return HitableList{
 		Sphere{center: Point3{Z: -1.0}, radius: 0.5, material: Lambertian{Color{R: 0.8, G: 0.3, B: 0.3}}},
 		Sphere{center: Point3{Y: -100.5, Z: -1.0}, radius: 100, material: Lambertian{Color{R: 0.8, G: 0.8}}},
-		Sphere{center: Point3{X: 1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Metal{Color{R: 0.8, G: 0.6, B: 0.2}}},
-		Sphere{center: Point3{X: -1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Metal{Color{R: 0.8, G: 0.8, B: 0.8}}},
+		Sphere{center: Point3{X: 1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Metal{Color{R: 0.8, G: 0.6, B: 0.2}, 1.0}},
+		Sphere{center: Point3{X: -1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Metal{Color{R: 0.8, G: 0.8, B: 0.8}, 0.3}},
 	}
 }
 

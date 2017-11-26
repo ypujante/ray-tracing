@@ -25,6 +25,11 @@ func (v Vec3) Sub(v2 Vec3) Vec3 {
 	return Vec3{X: v.X - v2.X, Y: v.Y - v2.Y, Z: v.Z - v2.Z}
 }
 
+// Add adds the 2 vectors (return a new vector)
+func (v Vec3) Add(v2 Vec3) Vec3 {
+	return Vec3{X: v.X + v2.X, Y: v.Y + v2.Y, Z: v.Z + v2.Z}
+}
+
 // Length returns the size of the vector
 func (v Vec3) Length() float64 {
 	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
