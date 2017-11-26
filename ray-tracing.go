@@ -50,7 +50,7 @@ func render(width, height, raysPerPixel int, camera Camera, world Hitable) Rende
 	return RenderBlock{0, 0, width, height, pixels}
 }
 
-func color(r Ray, world Hitable, depth int) Color {
+func color(r *Ray, world Hitable, depth int) Color {
 
 	if hit, hr := world.hit(r, 0.001, math.MaxFloat64); hit {
 		if depth >= 50 {
@@ -58,7 +58,7 @@ func color(r Ray, world Hitable, depth int) Color {
 		}
 
 		if wasScattered, attenuation, scattered := hr.material.scatter(r, hr); wasScattered {
-			return attenuation.Mult(color(*scattered, world, depth + 1))
+			return attenuation.Mult(color(scattered, world, depth + 1))
 		} else {
 			return Black
 		}

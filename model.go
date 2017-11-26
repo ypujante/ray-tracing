@@ -78,7 +78,7 @@ type Ray struct {
 }
 
 // PointAt returns a new point along the ray (0 will return the origin)
-func (r Ray) PointAt(t float64) Point3 {
+func (r *Ray) PointAt(t float64) Point3 {
 	return r.Origin.Translate(r.Direction.Scale(t))
 }
 
@@ -131,14 +131,14 @@ type HitRecord struct {
 
 // Hitable defines the interface of objects that can be hit by a ray
 type Hitable interface {
-	hit(r Ray, tMin float64, tMax float64) (bool, *HitRecord)
+	hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord)
 }
 
 // HitableList defines a simple list of hitable
 type HitableList []Hitable
 
 // hit defines the method for a list of hitables: will return the one closest
-func (hl HitableList) hit(r Ray, tMin float64, tMax float64) (bool, *HitRecord) {
+func (hl HitableList) hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord) {
 	var res *HitRecord
 	hitAnything := false
 

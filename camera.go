@@ -7,7 +7,7 @@ type Camera struct {
 	vertical Vec3
 }
 
-func (c Camera) ray(u, v float64) Ray {
+func (c Camera) ray(u, v float64) *Ray {
 	d := c.lowerLeftCorner.Translate(c.horizontal.Scale(u)).Translate(c.vertical.Scale(v)).Sub(c.origin)
-	return Ray{c.origin, d}
+	return &Ray{c.origin, d}
 }

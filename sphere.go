@@ -8,7 +8,7 @@ type Sphere struct {
 	material Material
 }
 
-func (s Sphere) hit(r Ray, tMin float64, tMax float64) (bool, *HitRecord) {
+func (s Sphere) hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord) {
 	oc := r.Origin.Sub(s.center)         // A-C
 	a := Dot(r.Direction, r.Direction)   // dot(B, B)
 	b := Dot(oc, r.Direction)            // dot(A-C, B)
