@@ -15,7 +15,16 @@ type RenderBlock struct {
 
 func randomInUnitSphere() Vec3 {
 	for {
-		p := Point3{2.0 * rand.Float64(), 2.0 * rand.Float64(), 2.0 * rand.Float64()}.Sub(Point3{1, 1, 1})
+		p := Vec3{2.0*rand.Float64() - 1.0, 2.0*rand.Float64() - 1.0, 2.0*rand.Float64() - 1.0}
+		if Dot(p, p) < 1.0 {
+			return p
+		}
+	}
+}
+
+func randomInUnitDisk() Vec3 {
+	for {
+		p := Vec3{2.0*rand.Float64() - 1.0, 2.0*rand.Float64() - 1.0, 0}
 		if Dot(p, p) < 1.0 {
 			return p
 		}
@@ -96,9 +105,8 @@ func buildWorldDielectrics() HitableList {
 	}
 }
 
-
 func main() {
-	const WIDTH, HEIGHT, RAYS_PER_PIXEL = 400, 200, 5
+	const WIDTH, HEIGHT, RAYS_PER_PIXEL = 400, 200, 100
 
 	rand.Seed(1971)
 
@@ -128,7 +136,13 @@ func main() {
 	}
 
 	// actual work to render the image
-	camera := NewCamera(Point3{}, Point3{Z: -1.0}, Vec3{Y:1.0}, 90, WIDTH / HEIGHT, 1)
+	lookFrom := Point3{-2.0, 2.0, 1.0}
+	lookAt := Point3{Z: -1.0}
+	//aperture := 2.0
+	//distToFocus := lookFrom.Sub(lookAt).Length()
+	aperture := 0.0
+	distToFocus := 1.0
+	camera := NewCamera(lookFrom, lookAt, Vec3{Y: 1.0}, 20, WIDTH/HEIGHT, aperture, distToFocus)
 
 	world := buildWorldDielectrics()
 	rb := render(WIDTH, HEIGHT, RAYS_PER_PIXEL, camera, world)
