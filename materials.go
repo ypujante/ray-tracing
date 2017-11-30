@@ -2,7 +2,6 @@ package main
 
 import (
 	"math"
-	"math/rand"
 )
 
 /***********************
@@ -21,8 +20,8 @@ type Lambertian struct {
 }
 
 func (mat Lambertian) scatter(r *Ray, rec *HitRecord) (bool, *Color, *Ray) {
-	target := rec.p.Translate(rec.normal).Translate(randomInUnitSphere())
-	scattered := &Ray{rec.p, target.Sub(rec.p)}
+	target := rec.p.Translate(rec.normal).Translate(randomInUnitSphere(r.rnd))
+	scattered := &Ray{rec.p, target.Sub(rec.p), r.rnd}
 	attenuation := &mat.albedo
 	return true, attenuation, scattered
 
@@ -39,9 +38,9 @@ type Metal struct {
 func (mat Metal) scatter(r *Ray, rec *HitRecord) (bool, *Color, *Ray) {
 	reflected := r.Direction.Unit().Reflect(rec.normal)
 	if mat.fuzz < 1 {
-		reflected = reflected.Add(randomInUnitSphere().Scale(mat.fuzz))
+		reflected = reflected.Add(randomInUnitSphere(r.rnd).Scale(mat.fuzz))
 	}
-	scattered := &Ray{rec.p, reflected}
+	scattered := &Ray{rec.p, reflected, r.rnd}
 	attenuation := &mat.albedo
 
 	if Dot(scattered.Direction, rec.normal) > 0 {
@@ -103,11 +102,11 @@ func (die Dielectric) scatter(r *Ray, rec *HitRecord) (bool, *Color, *Ray) {
 	var direction Vec3
 
 	// refract only with some probability
-	if wasRefracted && rand.Float64() >= schlick(cosine, die.refIdx) {
+	if wasRefracted && r.rnd.Float64() >= schlick(cosine, die.refIdx) {
 		direction = *refracted
 	} else {
 		direction = r.Direction.Unit().Reflect(rec.normal)
 	}
 
-	return true, &White, &Ray{rec.p, direction}
+	return true, &White, &Ray{rec.p, direction, r.rnd}
 }

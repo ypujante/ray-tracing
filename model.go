@@ -1,6 +1,9 @@
 package main
 
-import "math"
+import (
+	"math"
+	"math/rand"
+)
 
 /***********************
  * Vec3
@@ -90,6 +93,7 @@ func (p Point3) Vec3() Vec3 {
 type Ray struct {
 	Origin    Point3
 	Direction Vec3
+	rnd *rand.Rand
 }
 
 // PointAt returns a new point along the ray (0 will return the origin)

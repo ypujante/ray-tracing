@@ -6,57 +6,143 @@ import (
 	"unsafe"
 	"math"
 	"math/rand"
+	"runtime"
+	"sync"
+	"fmt"
+	"time"
 )
 
-type RenderBlock struct {
-	X, Y, Width, Height int
-	pixels              []uint32
+type Pixels []uint32
+
+type Scene struct {
+	width, height int
+	raysPerPixel  int
+	camera        Camera
+	world         Hitable
 }
 
-func randomInUnitSphere() Vec3 {
+func randomInUnitSphere(rnd *rand.Rand) Vec3 {
 	for {
-		p := Vec3{2.0*rand.Float64() - 1.0, 2.0*rand.Float64() - 1.0, 2.0*rand.Float64() - 1.0}
+		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0}
 		if Dot(p, p) < 1.0 {
 			return p
 		}
 	}
 }
 
-func randomInUnitDisk() Vec3 {
+func randomInUnitDisk(rnd *rand.Rand) Vec3 {
 	for {
-		p := Vec3{2.0*rand.Float64() - 1.0, 2.0*rand.Float64() - 1.0, 0}
+		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 0}
 		if Dot(p, p) < 1.0 {
 			return p
 		}
 	}
 }
 
-func render(width, height, raysPerPixel int, camera Camera, world Hitable) RenderBlock {
-	pixels := make([]uint32, width*height)
+func display(window *sdl.Window, screen *sdl.Surface, scene *Scene, pixels Pixels) {
+	// create an image from the pixels generated
+	image, err := sdl.CreateRGBSurfaceFrom(unsafe.Pointer(&pixels[0]), int32(scene.width), int32(scene.height), 32, scene.width*int(unsafe.Sizeof(pixels[0])), 0, 0, 0, 0)
+	if err != nil {
+		panic(err)
+	}
+	defer image.Free()
+	// copy it into the screen
+	err = image.Blit(nil, screen, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	// update the surface to show it
+	err = window.UpdateSurface()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (scene *Scene) render(rnd *rand.Rand, i, j int) uint32 {
+	c := Color{}
+
+	for s := 0; s < scene.raysPerPixel; s++ {
+		u := (float64(i) + rnd.Float64()) / float64(scene.width)
+		v := (float64(j) + rnd.Float64()) / float64(scene.height)
+		r := scene.camera.ray(rnd, u, v)
+		c = c.Add(color(r, scene.world, 0))
+	}
+
+	c = c.Scale(1.0 / float64(scene.raysPerPixel))
+	c = Color{R: math.Sqrt(c.R), G: math.Sqrt(c.G), B: math.Sqrt(c.B)}
+
+	return c.PixelValue()
+}
+
+
+func render(scene *Scene, parallelCount int) (Pixels, chan struct{}) {
+	pixels := make([]uint32, scene.width*scene.height)
+
+	completed := make(chan struct{})
+
+	type PixelToProcess struct {
+		i,j,k int
+	}
+
+	split := func (buf []PixelToProcess, lim int) [][]PixelToProcess {
+		var chunk []PixelToProcess
+		chunks := make([][]PixelToProcess, 0, len(buf)/lim+1)
+		for len(buf) >= lim {
+		chunk, buf = buf[:lim], buf[lim:]
+		chunks = append(chunks, chunk)
+	}
+		if len(buf) > 0 {
+		chunks = append(chunks, buf)
+	}
+		return chunks
+	}
+
+
+	pixelsToProcess := make(chan []PixelToProcess)
+
+
+	allPixelsToProcess := make([]PixelToProcess, scene.width*scene.height)
 
 	k := 0
-	for j := height - 1; j >= 0; j-- {
-		for i := 0; i < width; i++ {
-
-			c := Color{}
-
-			for s := 0; s < raysPerPixel; s++ {
-				u := (float64(i) + rand.Float64()) / float64(width)
-				v := (float64(j) + rand.Float64()) / float64(height)
-				r := camera.ray(u, v)
-				c = c.Add(color(r, world, 0))
-			}
-
-			c = c.Scale(1.0 / float64(raysPerPixel))
-			c = Color{R: math.Sqrt(c.R), G: math.Sqrt(c.G), B: math.Sqrt(c.B)}
-
-			pixels[k] = c.PixelValue()
-
+	for j := scene.height - 1; j >= 0; j-- {
+		for i := 0; i < scene.width; i++ {
+			allPixelsToProcess[k] = PixelToProcess{i,j,k}
 			k++
 		}
 	}
 
-	return RenderBlock{0, 0, width, height, pixels}
+	go func() {
+		slices := split(allPixelsToProcess, scene.width)
+
+		for _, p := range slices {
+			pixelsToProcess <- p
+		}
+
+		close(pixelsToProcess)
+	}()
+
+	wg := sync.WaitGroup{}
+
+	for c:= 0; c < parallelCount; c++ {
+		wg.Add(1)
+		go func() {
+			rnd := rand.New(rand.NewSource(1971))
+			for ps := range pixelsToProcess {
+				for _, p:= range ps {
+					pixels[p.k] = scene.render(rnd, p.i, p.j)
+				}
+			}
+			wg.Done()
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		completed <- struct{}{}
+	}()
+
+	return pixels, completed
 }
 
 func color(r *Ray, world Hitable, depth int) Color {
@@ -106,7 +192,7 @@ func buildWorldDielectrics() HitableList {
 }
 
 func main() {
-	const WIDTH, HEIGHT, RAYS_PER_PIXEL = 400, 200, 100
+	const WIDTH, HEIGHT, RAYS_PER_PIXEL = 800, 400, 100
 
 	rand.Seed(1971)
 
@@ -145,25 +231,18 @@ func main() {
 	camera := NewCamera(lookFrom, lookAt, Vec3{Y: 1.0}, 20, WIDTH/HEIGHT, aperture, distToFocus)
 
 	world := buildWorldDielectrics()
-	rb := render(WIDTH, HEIGHT, RAYS_PER_PIXEL, camera, world)
-
-	// create an image from the pixels generated
-	image, err := sdl.CreateRGBSurfaceFrom(unsafe.Pointer(&rb.pixels[0]), int32(rb.Width), int32(rb.Height), 32, rb.Width*int(unsafe.Sizeof(rb.pixels[0])), 0, 0, 0, 0)
-	if err != nil {
-		panic(err)
-	}
-	// copy it into the screen
-	err = image.Blit(nil, screen, nil)
-	if err != nil {
-		panic(err)
-	}
-	image.Free()
+	scene := &Scene{width: WIDTH, height: HEIGHT, raysPerPixel: RAYS_PER_PIXEL, camera: camera, world: world}
+	pixels, completed := render(scene, runtime.NumCPU())
 
 	// update the surface to show it
 	err = window.UpdateSurface()
 	if err != nil {
 		panic(err)
 	}
+
+	updateDisplay := true
+
+	start := time.Now()
 
 	// poll for quit event
 	for running := true; running; {
@@ -175,5 +254,19 @@ func main() {
 		}
 
 		sdl.Delay(16)
+
+		select {
+		case <-completed:
+			display(window, screen, scene, pixels)
+			updateDisplay = false
+			fmt.Println(time.Now().Sub(start))
+			break
+		default:
+			break
+		}
+
+		if updateDisplay {
+			display(window, screen, scene, pixels)
+		}
 	}
 }

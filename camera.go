@@ -1,8 +1,15 @@
 package main
 
-import "math"
+import (
+	"math"
+	"math/rand"
+)
 
-type Camera struct {
+type Camera interface {
+	ray(rnd *rand.Rand, u, v float64) *Ray
+}
+
+type camera struct {
 	origin          Point3
 	lowerLeftCorner Point3
 	horizontal      Vec3
@@ -25,18 +32,18 @@ func NewCamera(lookFrom Point3, lookAt Point3, vup Vec3, vfov float64, aspect fl
 	horizontal := u.Scale(2 * halfWidth * focusDist)
 	vertical := v.Scale(2 * halfHeight * focusDist)
 
-	return Camera{origin, lowerLeftCorner, horizontal, vertical, u, v, aperture / 2.0}
+	return camera{origin, lowerLeftCorner, horizontal, vertical, u, v, aperture / 2.0}
 }
 
-func (c Camera) ray(u, v float64) *Ray {
+func (c camera) ray(rnd *rand.Rand, u, v float64) *Ray {
 	d := c.lowerLeftCorner.Translate(c.horizontal.Scale(u)).Translate(c.vertical.Scale(v)).Sub(c.origin)
 	origin := c.origin
 
 	if c.lensRadius > 0 {
-		rd := randomInUnitDisk().Scale(c.lensRadius)
+		rd := randomInUnitDisk(rnd).Scale(c.lensRadius)
 		offset := c.u.Scale(rd.X).Add(c.v.Scale(rd.Y))
 		origin = origin.Translate(offset)
 		d = d.Sub(offset)
 	}
-	return &Ray{origin, d}
+	return &Ray{origin, d, rnd}
 }
