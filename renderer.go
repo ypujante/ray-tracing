@@ -27,7 +27,7 @@ func split(buf []PixelToProcess, lim int) [][]PixelToProcess {
 	return chunks
 }
 
-func (scene *Scene) render(rnd *rand.Rand, pixel *PixelToProcess, raysPerPixel int) uint32 {
+func (scene *Scene) render(rnd Rnd, pixel *PixelToProcess, raysPerPixel int) uint32 {
 	c := pixel.color
 
 	for s := 0; s < raysPerPixel; s++ {

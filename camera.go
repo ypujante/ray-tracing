@@ -2,11 +2,10 @@ package main
 
 import (
 	"math"
-	"math/rand"
 )
 
 type Camera interface {
-	ray(rnd *rand.Rand, u, v float64) *Ray
+	ray(rnd Rnd, u, v float64) *Ray
 }
 
 type camera struct {
@@ -35,7 +34,7 @@ func NewCamera(lookFrom Point3, lookAt Point3, vup Vec3, vfov float64, aspect fl
 	return camera{origin, lowerLeftCorner, horizontal, vertical, u, v, aperture / 2.0}
 }
 
-func (c camera) ray(rnd *rand.Rand, u, v float64) *Ray {
+func (c camera) ray(rnd Rnd, u, v float64) *Ray {
 	d := c.lowerLeftCorner.Translate(c.horizontal.Scale(u)).Translate(c.vertical.Scale(v)).Sub(c.origin)
 	origin := c.origin
 

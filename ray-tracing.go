@@ -5,7 +5,6 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 	"unsafe"
 	"math"
-	"math/rand"
 	"runtime"
 	"fmt"
 )
@@ -19,7 +18,7 @@ type Scene struct {
 	world         Hitable
 }
 
-func randomInUnitSphere(rnd *rand.Rand) Vec3 {
+func randomInUnitSphere(rnd Rnd) Vec3 {
 	for {
 		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0}
 		if Dot(p, p) < 1.0 {
@@ -28,7 +27,7 @@ func randomInUnitSphere(rnd *rand.Rand) Vec3 {
 	}
 }
 
-func randomInUnitDisk(rnd *rand.Rand) Vec3 {
+func randomInUnitDisk(rnd Rnd) Vec3 {
 	for {
 		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 0}
 		if Dot(p, p) < 1.0 {
@@ -106,8 +105,6 @@ func buildWorldDielectrics() HitableList {
 func main() {
 	const WIDTH, HEIGHT = 800, 400
 	RAYS_PER_PIXEL := []int{2, 4, 8, 16, 32, 64}
-
-	rand.Seed(1971)
 
 	// initializes SDL
 	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
