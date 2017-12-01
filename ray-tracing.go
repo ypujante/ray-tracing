@@ -4,11 +4,26 @@ package main
 import (
 	"github.com/veandco/go-sdl2/sdl"
 	"unsafe"
-	"math"
 	"runtime"
 	"fmt"
 	"math/rand"
+	"flag"
+	"strings"
+	"strconv"
+	"image"
+	clr "image/color"
+	"os"
+	"image/png"
 )
+
+type RaysPerPixelList []int
+
+type Options struct {
+	Width        int
+	Height       int
+	RaysPerPixel RaysPerPixelList
+	Output       string
+}
 
 type Pixels []uint32
 
@@ -55,26 +70,6 @@ func display(window *sdl.Window, screen *sdl.Surface, scene *Scene, pixels Pixel
 	if err != nil {
 		panic(err)
 	}
-}
-
-func color(r *Ray, world Hitable, depth int) Color {
-
-	if hit, hr := world.hit(r, 0.001, math.MaxFloat64); hit {
-		if depth >= 50 {
-			return Black
-		}
-
-		if wasScattered, attenuation, scattered := hr.material.scatter(r, hr); wasScattered {
-			return attenuation.Mult(color(scattered, world, depth+1))
-		} else {
-			return Black
-		}
-	}
-
-	unitDirection := r.Direction.Unit()
-	t := 0.5 * (unitDirection.Y + 1.0)
-
-	return White.Scale(1.0 - t).Add(Color{0.5, 0.7, 1.0}.Scale(t))
 }
 
 func buildWorld() HitableList {
@@ -159,7 +154,7 @@ func buildWorldOneWeekend(width, height int) (Camera, HitableList) {
 		Sphere{
 			center:   Point3{-4, 1, 0},
 			radius:   1.0,
-			material: Lambertian{Color{0.4, 0.2,0.1}}},
+			material: Lambertian{Color{0.4, 0.2, 0.1}}},
 		Sphere{
 			center:   Point3{4, 1, 0},
 			radius:   1.0,
@@ -174,11 +169,73 @@ func buildWorldOneWeekend(width, height int) (Camera, HitableList) {
 	return camera, world
 }
 
-func main() {
-	const WIDTH, HEIGHT = 800, 400
-	//RAYS_PER_PIXEL := []int{2, 4, 4, 10, 10, 10, 10, 10, 10, 10, 10, 10}
+func (r *RaysPerPixelList) String() string {
+	return fmt.Sprint(*r)
+}
 
-	RAYS_PER_PIXEL := []int{1, 99}
+func (r *RaysPerPixelList) Set(value string) error {
+	for _, e := range strings.Split(value, ",") {
+		i, err := strconv.Atoi(e)
+		if err != nil {
+			return err
+		}
+		*r = append(*r, i)
+	}
+	return nil
+}
+
+func saveImage(pixels Pixels, options Options) (error, bool) {
+	if options.Output != "" {
+		f, err := os.OpenFile(options.Output, os.O_RDWR|os.O_CREATE, 0755)
+		if err != nil {
+			return err, true
+		}
+
+		img := image.NewNRGBA(image.Rect(0, 0, options.Width, options.Height))
+
+		k := 0
+		for y := 0; y < options.Height; y++ {
+			for x := 0; x < options.Width; x++ {
+				p := pixels[k]
+				img.Set(x, y, clr.NRGBA{
+					R: uint8(p >> 16 & 0xFF),
+					G: uint8(p >> 8 & 0xFF),
+					B: uint8(p & 0xFF),
+					A: 255,
+				})
+				k++
+			}
+		}
+
+		if err := png.Encode(f, img); err != nil {
+			f.Close()
+			return err, true
+		}
+
+		if err := f.Close(); err != nil {
+			return err, true
+		}
+
+		return nil, true
+	}
+
+	return nil, false
+
+}
+
+func main() {
+	options := Options{}
+
+	flag.IntVar(&options.Width, "w", 800, "width in pixel")
+	flag.IntVar(&options.Height, "h", 400, "height in pixel")
+	flag.Var(&options.RaysPerPixel, "r", "comma separated list (or multiple) rays per pixel")
+	flag.StringVar(&options.Output, "o", "", "path to file for saving (do not save if not defined)")
+
+	flag.Parse()
+
+	if (len(options.RaysPerPixel) == 0) {
+		options.RaysPerPixel = []int{1, 99}
+	}
 
 	// initializes SDL
 	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
@@ -187,7 +244,7 @@ func main() {
 	defer sdl.Quit()
 
 	// create (and show) window
-	window, err := sdl.CreateWindow("Ray Tracing", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, sdl.WINDOW_SHOWN)
+	window, err := sdl.CreateWindow("Ray Tracing", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, int32(options.Width), int32(options.Height), sdl.WINDOW_SHOWN)
 	if err != nil {
 		panic(err)
 	}
@@ -200,13 +257,13 @@ func main() {
 	}
 
 	// clear the screen (otherwise there is garbage...)
-	err = screen.FillRect(&sdl.Rect{W: WIDTH, H: HEIGHT}, 0x00000000)
+	err = screen.FillRect(&sdl.Rect{W: int32(options.Width), H: int32(options.Height)}, 0x00000000)
 	if err != nil {
 		panic(err)
 	}
 
-	camera, world := buildWorldOneWeekend(WIDTH, HEIGHT)
-	scene := &Scene{width: WIDTH, height: HEIGHT, raysPerPixel: RAYS_PER_PIXEL, camera: camera, world: world}
+	camera, world := buildWorldOneWeekend(options.Width, options.Height)
+	scene := &Scene{width: options.Width, height: options.Height, raysPerPixel: options.RaysPerPixel, camera: camera, world: world}
 	pixels, completed := render(scene, runtime.NumCPU())
 
 	// update the surface to show it
@@ -233,7 +290,13 @@ func main() {
 			display(window, screen, scene, pixels)
 			updateDisplay = false
 			fmt.Println("Render complete.")
-			break
+			err, saved := saveImage(pixels, options)
+			switch {
+			case err != nil:
+				fmt.Printf("Error while saving the image [%v]\n", err)
+			case saved:
+				fmt.Printf("Image saved to %v\n", options.Output)
+			}
 		default:
 			break
 		}

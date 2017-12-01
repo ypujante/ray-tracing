@@ -119,3 +119,24 @@ func render(scene *Scene, parallelCount int) (Pixels, chan struct{}) {
 
 	return pixels, completed
 }
+
+func color(r *Ray, world Hitable, depth int) Color {
+
+	if hit, hr := world.hit(r, 0.001, math.MaxFloat64); hit {
+		if depth >= 50 {
+			return Black
+		}
+
+		if wasScattered, attenuation, scattered := hr.material.scatter(r, hr); wasScattered {
+			return attenuation.Mult(color(scattered, world, depth+1))
+		} else {
+			return Black
+		}
+	}
+
+	unitDirection := r.Direction.Unit()
+	t := 0.5 * (unitDirection.Y + 1.0)
+
+	return White.Scale(1.0 - t).Add(Color{0.5, 0.7, 1.0}.Scale(t))
+}
+
