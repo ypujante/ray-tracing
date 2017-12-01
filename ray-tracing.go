@@ -23,6 +23,8 @@ type Options struct {
 	Height       int
 	RaysPerPixel RaysPerPixelList
 	Output       string
+	Seed         int64
+	CPU          int
 }
 
 type Pixels []uint32
@@ -112,8 +114,6 @@ func buildWorldOneWeekend(width, height int) (Camera, HitableList) {
 
 	maxSpheres := 500
 	world = append(world, Sphere{center: Point3{Y: -1000.0}, radius: 1000, material: Lambertian{Color{R: 0.5, G: 0.5, B: 0.5}}})
-
-	rand.Seed(1971)
 
 	for a := -11; a < 11 && len(world) < maxSpheres; a++ {
 		for b := -11; b < 11 && len(world) < maxSpheres; b++ {
@@ -228,6 +228,8 @@ func main() {
 
 	flag.IntVar(&options.Width, "w", 800, "width in pixel")
 	flag.IntVar(&options.Height, "h", 400, "height in pixel")
+	flag.IntVar(&options.CPU, "cpu", runtime.NumCPU(), "number of CPU to use (default to number of CPU available)")
+	flag.Int64Var(&options.Seed, "seed", 2017, "seed for random number generator")
 	flag.Var(&options.RaysPerPixel, "r", "comma separated list (or multiple) rays per pixel")
 	flag.StringVar(&options.Output, "o", "", "path to file for saving (do not save if not defined)")
 
@@ -236,6 +238,9 @@ func main() {
 	if (len(options.RaysPerPixel) == 0) {
 		options.RaysPerPixel = []int{1, 99}
 	}
+
+	// initializes the random number generator (since the scene has random spheres... to be reproducible)
+	rand.Seed(options.Seed)
 
 	// initializes SDL
 	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
@@ -264,7 +269,7 @@ func main() {
 
 	camera, world := buildWorldOneWeekend(options.Width, options.Height)
 	scene := &Scene{width: options.Width, height: options.Height, raysPerPixel: options.RaysPerPixel, camera: camera, world: world}
-	pixels, completed := render(scene, runtime.NumCPU())
+	pixels, completed := render(scene, options.CPU)
 
 	// update the surface to show it
 	err = window.UpdateSurface()
