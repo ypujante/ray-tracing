@@ -14,9 +14,9 @@ type PixelToProcess struct {
 	raysPerPixel int
 }
 
-func split(buf []PixelToProcess, lim int) [][]PixelToProcess {
-	var chunk []PixelToProcess
-	chunks := make([][]PixelToProcess, 0, len(buf)/lim+1)
+func split(buf []*PixelToProcess, lim int) [][]*PixelToProcess {
+	var chunk []*PixelToProcess
+	chunks := make([][]*PixelToProcess, 0, len(buf)/lim+1)
 	for len(buf) >= lim {
 		chunk, buf = buf[:lim], buf[lim:]
 		chunks = append(chunks, chunk)
@@ -51,12 +51,12 @@ func render(scene *Scene, parallelCount int) (Pixels, chan struct{}) {
 	completed := make(chan struct{})
 
 	go func() {
-		allPixelsToProcess := make([]PixelToProcess, scene.width*scene.height)
+		allPixelsToProcess := make([]*PixelToProcess, scene.width*scene.height)
 
 		k := 0
 		for j := scene.height - 1; j >= 0; j-- {
 			for i := 0; i < scene.width; i++ {
-				allPixelsToProcess[k] = PixelToProcess{i: i, j: j, k: k}
+				allPixelsToProcess[k] = &PixelToProcess{i: i, j: j, k: k}
 				k++
 			}
 		}
@@ -77,7 +77,7 @@ func render(scene *Scene, parallelCount int) (Pixels, chan struct{}) {
 
 			loopStart := time.Now()
 
-			pixelsToProcess := make(chan []PixelToProcess)
+			pixelsToProcess := make(chan []*PixelToProcess)
 
 			go func() {
 				for _, p := range lines {
@@ -91,10 +91,20 @@ func render(scene *Scene, parallelCount int) (Pixels, chan struct{}) {
 			for c := 0; c < parallelCount; c++ {
 				wg.Add(1)
 				go func() {
-					rnd := rand.New(rand.NewSource(1971))
+					rnd := rand.New(rand.NewSource(rand.Int63()))
 					for ps := range pixelsToProcess {
+
+						// redisplay the line without gamma correction => make it darker to be more visible
 						for _, p := range ps {
-							pixels[p.k] = scene.render(rnd, &p, rpp)
+							if p.raysPerPixel > 0 {
+								col := p.color.Scale(1.0 / float64(p.raysPerPixel))
+								pixels[p.k] = col.PixelValue()
+							}
+						}
+
+						// render every pixel in the line
+						for _, p := range ps {
+							pixels[p.k] = scene.render(rnd, p, rpp)
 						}
 					}
 					wg.Done()
@@ -139,4 +149,3 @@ func color(r *Ray, world Hitable, depth int) Color {
 
 	return White.Scale(1.0 - t).Add(Color{0.5, 0.7, 1.0}.Scale(t))
 }
-
