@@ -7,6 +7,7 @@ import (
 	"math"
 	"runtime"
 	"fmt"
+	"math/rand"
 )
 
 type Pixels []uint32
@@ -92,19 +93,92 @@ func buildWorldMetalSpheres() HitableList {
 	}
 }
 
-func buildWorldDielectrics() HitableList {
-	return HitableList{
+func buildWorldDielectrics(width, height int) (Camera, HitableList) {
+
+	lookFrom := Point3{-2.0, 2.0, 1.0}
+	lookAt := Point3{Z: -1.0}
+	aperture := 0.0
+	distToFocus := 1.0
+	camera := NewCamera(lookFrom, lookAt, Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
+
+	world := HitableList{
 		Sphere{center: Point3{Z: -1.0}, radius: 0.5, material: Lambertian{Color{R: 0.1, G: 0.2, B: 0.5}}},
 		Sphere{center: Point3{Y: -100.5, Z: -1.0}, radius: 100, material: Lambertian{Color{R: 0.8, G: 0.8}}},
 		Sphere{center: Point3{X: 1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Metal{Color{R: 0.8, G: 0.6, B: 0.2}, 1.0}},
 		Sphere{center: Point3{X: -1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Dielectric{1.5}},
 		Sphere{center: Point3{X: -1.0, Y: 0, Z: -1.0}, radius: -0.45, material: Dielectric{1.5}},
 	}
+
+	return camera, world
+}
+
+func buildWorldOneWeekend(width, height int) (Camera, HitableList) {
+	world := []Hitable{}
+
+	maxSpheres := 500
+	world = append(world, Sphere{center: Point3{Y: -1000.0}, radius: 1000, material: Lambertian{Color{R: 0.5, G: 0.5, B: 0.5}}})
+
+	rand.Seed(1971)
+
+	for a := -11; a < 11 && len(world) < maxSpheres; a++ {
+		for b := -11; b < 11 && len(world) < maxSpheres; b++ {
+			chooseMaterial := rand.Float64()
+			center := Point3{float64(a) + 0.9*rand.Float64(), 0.2, float64(b) + 0.9*rand.Float64()}
+
+			if center.Sub(Point3{4.0, 0.2, 0}).Length() > 0.9 {
+				switch {
+				case chooseMaterial < 0.8: // diffuse
+					world = append(world,
+						Sphere{
+							center:   center,
+							radius:   0.2,
+							material: Lambertian{Color{R: rand.Float64() * rand.Float64(), G: rand.Float64() * rand.Float64(), B: rand.Float64() * rand.Float64()}}})
+				case chooseMaterial < 0.95: // metal
+					world = append(world,
+						Sphere{
+							center:   center,
+							radius:   0.2,
+							material: Metal{Color{R: 0.5 * (1 + rand.Float64()), G: 0.5 * (1 + rand.Float64()), B: 0.5 * (1 + rand.Float64())}, 0.5 * rand.Float64()}})
+				default:
+					world = append(world,
+						Sphere{
+							center:   center,
+							radius:   0.2,
+							material: Dielectric{1.5}})
+
+				}
+			}
+		}
+	}
+
+	world = append(world,
+		Sphere{
+			center:   Point3{0, 1, 0},
+			radius:   1.0,
+			material: Dielectric{1.5}},
+		Sphere{
+			center:   Point3{-4, 1, 0},
+			radius:   1.0,
+			material: Lambertian{Color{0.4, 0.2,0.1}}},
+		Sphere{
+			center:   Point3{4, 1, 0},
+			radius:   1.0,
+			material: Metal{Color{0.7, 0.6, 0.5}, 0}})
+
+	lookFrom := Point3{13, 2, 3}
+	lookAt := Point3{}
+	aperture := 0.1
+	distToFocus := 10.0
+	camera := NewCamera(lookFrom, lookAt, Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
+
+	return camera, world
 }
 
 func main() {
 	const WIDTH, HEIGHT = 800, 400
-	RAYS_PER_PIXEL := []int{2, 4, 8, 16, 32, 64}
+	//RAYS_PER_PIXEL := []int{2, 4, 4, 10, 10, 10, 10, 10, 10, 10, 10, 10}
+
+	RAYS_PER_PIXEL := []int{1, 99}
 
 	// initializes SDL
 	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
@@ -131,16 +205,7 @@ func main() {
 		panic(err)
 	}
 
-	// actual work to render the image
-	lookFrom := Point3{-2.0, 2.0, 1.0}
-	lookAt := Point3{Z: -1.0}
-	//aperture := 2.0
-	//distToFocus := lookFrom.Sub(lookAt).Length()
-	aperture := 0.0
-	distToFocus := 1.0
-	camera := NewCamera(lookFrom, lookAt, Vec3{Y: 1.0}, 20, WIDTH/HEIGHT, aperture, distToFocus)
-
-	world := buildWorldDielectrics()
+	camera, world := buildWorldOneWeekend(WIDTH, HEIGHT)
 	scene := &Scene{width: WIDTH, height: HEIGHT, raysPerPixel: RAYS_PER_PIXEL, camera: camera, world: world}
 	pixels, completed := render(scene, runtime.NumCPU())
 
