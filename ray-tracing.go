@@ -69,21 +69,37 @@ func display(window *sdl.Window, screen *sdl.Surface, scene *Scene, pixels Pixel
 }
 
 // buildWorld is the end result chapter 7
-func buildWorld() HitableList {
-	return HitableList{
+func buildWorldChapter7(width, height int) (Camera, HitableList) {
+	lookFrom := Point3{0, 0.0, 3.0}
+	lookAt := Point3{Z: -1.0}
+	aperture := 0.0
+	distToFocus := 1.0
+	camera := NewCamera(lookFrom, lookAt, Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
+
+	world := HitableList{
 		Sphere{center: Point3{Z: -1.0}, radius: 0.5, material: Lambertian{Color{R: 1.0}}},
 		Sphere{center: Point3{Y: -100.5, Z: -1.0}, radius: 100, material: Lambertian{Color{G: 1.0}}},
 	}
+
+	return camera, world
 }
 
 // buildWorldMetalSpheres is the end result chapter 8
-func buildWorldMetalSpheres() HitableList {
-	return HitableList{
+func buildWorldMetalSpheres(width, height int) (Camera, HitableList) {
+	lookFrom := Point3{0, 0.0, 3.0}
+	lookAt := Point3{Z: -1.0}
+	aperture := 0.0
+	distToFocus := 1.0
+	camera := NewCamera(lookFrom, lookAt, Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
+
+	world := HitableList{
 		Sphere{center: Point3{Z: -1.0}, radius: 0.5, material: Lambertian{Color{R: 0.8, G: 0.3, B: 0.3}}},
 		Sphere{center: Point3{Y: -100.5, Z: -1.0}, radius: 100, material: Lambertian{Color{R: 0.8, G: 0.8}}},
 		Sphere{center: Point3{X: 1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Metal{Color{R: 0.8, G: 0.6, B: 0.2}, 1.0}},
 		Sphere{center: Point3{X: -1.0, Y: 0, Z: -1.0}, radius: 0.5, material: Metal{Color{R: 0.8, G: 0.8, B: 0.8}, 0.3}},
 	}
+
+	return camera, world
 }
 
 // buildWorldDielectrics is the end result chapter 10
@@ -254,7 +270,11 @@ func main() {
 		panic(err)
 	}
 
+	//camera, world := buildWorldChapter7(options.Width, options.Height)
+	//camera, world := buildWorldMetalSpheres(options.Width, options.Height)
+	//camera, world := buildWorldDielectrics(options.Width, options.Height)
 	camera, world := buildWorldOneWeekend(options.Width, options.Height)
+
 	scene := &Scene{width: options.Width, height: options.Height, raysPerPixel: options.RaysPerPixel, camera: camera, world: world}
 	pixels, completed := scene.Render(options.CPU)
 
