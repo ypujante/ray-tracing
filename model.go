@@ -176,3 +176,24 @@ func (hl HitableList) hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord)
 
 	return hitAnything, res
 }
+
+/***********************
+ * Utilities functions
+ ************************/
+func randomInUnitSphere(rnd Rnd) Vec3 {
+	for {
+		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0}
+		if Dot(p, p) < 1.0 {
+			return p
+		}
+	}
+}
+
+func randomInUnitDisk(rnd Rnd) Vec3 {
+	for {
+		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 0}
+		if Dot(p, p) < 1.0 {
+			return p
+		}
+	}
+}

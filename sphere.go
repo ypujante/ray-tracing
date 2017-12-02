@@ -8,6 +8,7 @@ type Sphere struct {
 	material Material
 }
 
+// hit implements the hit interface for a Sphere
 func (s Sphere) hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord) {
 	oc := r.Origin.Sub(s.center)         // A-C
 	a := Dot(r.Direction, r.Direction)   // dot(B, B)

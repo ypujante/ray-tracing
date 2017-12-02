@@ -16,8 +16,26 @@ import (
 	"image/png"
 )
 
+// RaysPerPixelList is used on the command line (flag) to define the number of rays per pixel per phase (hence a list)
+// Example: ray-tracing -r 1 -r 10
 type RaysPerPixelList []int
 
+func (r *RaysPerPixelList) String() string {
+	return fmt.Sprint(*r)
+}
+
+func (r *RaysPerPixelList) Set(value string) error {
+	for _, e := range strings.Split(value, ",") {
+		i, err := strconv.Atoi(e)
+		if err != nil {
+			return err
+		}
+		*r = append(*r, i)
+	}
+	return nil
+}
+
+// Options defines all the command line options available (all have a default value)
 type Options struct {
 	Width        int
 	Height       int
@@ -27,33 +45,9 @@ type Options struct {
 	CPU          int
 }
 
-type Pixels []uint32
-
-type Scene struct {
-	width, height int
-	raysPerPixel  []int
-	camera        Camera
-	world         Hitable
-}
-
-func randomInUnitSphere(rnd Rnd) Vec3 {
-	for {
-		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0}
-		if Dot(p, p) < 1.0 {
-			return p
-		}
-	}
-}
-
-func randomInUnitDisk(rnd Rnd) Vec3 {
-	for {
-		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 0}
-		if Dot(p, p) < 1.0 {
-			return p
-		}
-	}
-}
-
+// display will update the screen with the pixels provided
+// note that there is no synchronization required on the array of pixels since it is an array of 32 bits integers
+// that only gets updated to a final value by 1 goroutine at a time
 func display(window *sdl.Window, screen *sdl.Surface, scene *Scene, pixels Pixels) {
 	// create an image from the pixels generated
 	image, err := sdl.CreateRGBSurfaceFrom(unsafe.Pointer(&pixels[0]), int32(scene.width), int32(scene.height), 32, scene.width*int(unsafe.Sizeof(pixels[0])), 0, 0, 0, 0)
@@ -74,6 +68,7 @@ func display(window *sdl.Window, screen *sdl.Surface, scene *Scene, pixels Pixel
 	}
 }
 
+// buildWorld is the end result chapter 7
 func buildWorld() HitableList {
 	return HitableList{
 		Sphere{center: Point3{Z: -1.0}, radius: 0.5, material: Lambertian{Color{R: 1.0}}},
@@ -81,6 +76,7 @@ func buildWorld() HitableList {
 	}
 }
 
+// buildWorldMetalSpheres is the end result chapter 8
 func buildWorldMetalSpheres() HitableList {
 	return HitableList{
 		Sphere{center: Point3{Z: -1.0}, radius: 0.5, material: Lambertian{Color{R: 0.8, G: 0.3, B: 0.3}}},
@@ -90,6 +86,7 @@ func buildWorldMetalSpheres() HitableList {
 	}
 }
 
+// buildWorldDielectrics is the end result chapter 10
 func buildWorldDielectrics(width, height int) (Camera, HitableList) {
 
 	lookFrom := Point3{-2.0, 2.0, 1.0}
@@ -109,6 +106,7 @@ func buildWorldDielectrics(width, height int) (Camera, HitableList) {
 	return camera, world
 }
 
+// buildWorldDielectrics is the end result book
 func buildWorldOneWeekend(width, height int) (Camera, HitableList) {
 	world := []Hitable{}
 
@@ -169,21 +167,7 @@ func buildWorldOneWeekend(width, height int) (Camera, HitableList) {
 	return camera, world
 }
 
-func (r *RaysPerPixelList) String() string {
-	return fmt.Sprint(*r)
-}
-
-func (r *RaysPerPixelList) Set(value string) error {
-	for _, e := range strings.Split(value, ",") {
-		i, err := strconv.Atoi(e)
-		if err != nil {
-			return err
-		}
-		*r = append(*r, i)
-	}
-	return nil
-}
-
+// saveImage saves the image (if requested) to a file in png format
 func saveImage(pixels Pixels, options Options) (error, bool) {
 	if options.Output != "" {
 		f, err := os.OpenFile(options.Output, os.O_RDWR|os.O_CREATE, 0755)
@@ -223,6 +207,9 @@ func saveImage(pixels Pixels, options Options) (error, bool) {
 
 }
 
+// main parses the options, set up the Window/Screen, builds the world and renders the scene.
+// As the scene gets rendered the screen gets refreshed regularly to show progress. When the image is fully
+// rendered, it saves it to a file (if the output option is set)
 func main() {
 	options := Options{}
 
@@ -269,7 +256,7 @@ func main() {
 
 	camera, world := buildWorldOneWeekend(options.Width, options.Height)
 	scene := &Scene{width: options.Width, height: options.Height, raysPerPixel: options.RaysPerPixel, camera: camera, world: world}
-	pixels, completed := render(scene, options.CPU)
+	pixels, completed := scene.Render(options.CPU)
 
 	// update the surface to show it
 	err = window.UpdateSurface()
@@ -288,26 +275,29 @@ func main() {
 			}
 		}
 
+		// wait a few between iterations
 		sdl.Delay(16)
 
-		select {
-		case <-completed:
-			display(window, screen, scene, pixels)
-			updateDisplay = false
-			fmt.Println("Render complete.")
-			err, saved := saveImage(pixels, options)
-			switch {
-			case err != nil:
-				fmt.Printf("Error while saving the image [%v]\n", err)
-			case saved:
-				fmt.Printf("Image saved to %v\n", options.Output)
-			}
-		default:
-			break
-		}
-
 		if updateDisplay {
+
 			display(window, screen, scene, pixels)
+
+			// check (non blocking thanks to select) that the image is completely rendered
+			select {
+			case <-completed:
+				updateDisplay = false
+				fmt.Println("Render complete.")
+				err, saved := saveImage(pixels, options)
+				switch {
+				case err != nil:
+					fmt.Printf("Error while saving the image [%v]\n", err)
+				case saved:
+					fmt.Printf("Image saved to %v\n", options.Output)
+				}
+			default:
+				break
+			}
+
 		}
 	}
 }
